@@ -46,8 +46,7 @@ version = "0.2"
 dependencies = [
     "bilby",
     "lalsuite>=7.20",
-    "numpy>=1.17",
-    "scipy==1.14.0",
+    "numpy>=1.17"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",

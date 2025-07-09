@@ -148,12 +148,17 @@ def generate_ssb_parameters(sample, cosmology=None):
     redshift = None
     if 'redshift' in output_sample:
         redshift = output_sample['redshift']
-    if redshift is None:
+    elif redshift is None:
         redshift = bilby.gw.conversion.luminosity_distance_to_redshift(output_sample['luminosity_distance'], cosmology)
+    else:
+        print('Check the parameters. There is neither luminosity distance nor redshift.')
+
     if 'ssb_coeff' in output_sample:
         output_sample['kv5'] = kv5_from_ssb_coeff(output_sample['ssb_coeff'], redshift, cosmology=cosmology)
+    elif 'kv5' in output_sample:
+        output_sample['ssb_coeff'] = ssb_coeff_from_kv5(output_sample['kv5'], redshift, cosmology=cosmology)
     else :
-        print('could not generate samples of kv5')
+        print('could not generate samples of ssb_coeff or kv5')
 
     return output_sample
 
@@ -178,3 +183,42 @@ def generate_all_bbh_parameters(sample, likelihood=None, priors=None, npool=1):
     output_sample = bilby.gw.conversion.generate_all_bbh_parameters(sample, likelihood, priors, npool)
     output_sample = generate_ssb_parameters(output_sample)
     return output_sample
+
+
+def convert_to_lal_binary_black_hole_parameters(parameters):
+    """
+    Convert parameters we have into parameters we need.
+
+    This is defined by the parameters of bilby.source.lal_binary_black_hole()
+
+
+    Mass: mass_1, mass_2
+    Spin: a_1, a_2, tilt_1, tilt_2, phi_12, phi_jl
+    Extrinsic: luminosity_distance, theta_jn, phase, ra, dec, geocent_time, psi
+    SSB: ssb_coeff
+
+    This involves popping a lot of things from parameters.
+    The keys in added_keys should be popped after evaluating the waveform.
+
+    Parameters
+    ==========
+    parameters: dict
+        dictionary of parameter values to convert into the required parameters
+
+    Returns
+    =======
+    converted_parameters: dict
+        dict of the required parameters
+    added_keys: list
+        keys which are added to parameters during function call
+    """
+
+    converted_parameters, added_keys = bilby.gw.conversion.convert_to_lal_binary_black_hole_parameters(parameters)
+    if 'ssb_coeff' not in converted_parameters:
+        if 'kv5' in converted_parameters:       # for the isotropic limit
+            redshift = bilby.gw.conversion.luminosity_distance_to_redshift(converted_parameters['luminosity_distance'])
+            converted_parameters['ssb_coeff'] = ssb_coeff_from_kv5(converted_parameters['kv5'], redshift)
+
+        added_keys.append('ssb_coeff')
+
+    return converted_parameters, added_keys
